@@ -227,7 +227,9 @@ static void processData(txContext_t *context) {
         context->processingField = false;
     }
 }
-
+#ifdef CHAIN_TYPE_RSK
+unsigned int global_v = 0;
+#endif //CHAIN_TYPE_RSK
 static void processV(txContext_t *context) {
     if (context->currentFieldIsList) {
         PRINTF("Invalid type for RLP_V\n");
@@ -245,6 +247,11 @@ static void processV(txContext_t *context) {
                  : context->currentFieldLength - context->currentFieldPos);
         copyTxData(context, context->content->v + context->currentFieldPos,
                    copySize);
+#ifdef CHAIN_TYPE_RSK
+        global_v=0;
+	if (copySize>sizeof(global_v)) copySize=sizeof(global_v);
+	os_memmove(&global_v,context->content->v,copySize);
+#endif //CHAIN_TYPE_RSK
     }
     if (context->currentFieldPos == context->currentFieldLength) {
         context->content->vLength = context->currentFieldLength;

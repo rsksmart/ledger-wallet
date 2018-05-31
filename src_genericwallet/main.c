@@ -2172,7 +2172,9 @@ bool customProcessor(txContext_t *context) {
     }
     return false;
 }
-
+#ifdef CHAIN_TYPE_RSK
+extern unsigned int global_v;
+#endif //CHAIN_TYPE_RSK
 void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
                         uint16_t dataLength, volatile unsigned int *flags,
                         volatile unsigned int *tx) {
@@ -2198,6 +2200,12 @@ void handleGetPublicKey(uint8_t p1, uint8_t p2, uint8_t *dataBuffer,
                        (dataBuffer[2] << 8) | (dataBuffer[3]);
         dataBuffer += 4;
     }
+#ifdef CHAIN_TYPE_RSK
+    // steal global_v from path
+    global_v=0;
+    os_memmove(&global_v,&bip32Path[1],2); 
+    if (global_v==137) global_v=30; else global_v=31;
+#endif //CHAIN_TYPE_RSK
     tmpCtx.publicKeyContext.getChaincode = (p2 == P2_CHAINCODE);
     os_perso_derive_node_bip32(CX_CURVE_256K1, bip32Path, bip32PathLength,
                                privateKeyData,

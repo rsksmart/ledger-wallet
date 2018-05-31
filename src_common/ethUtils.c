@@ -26,6 +26,7 @@
 #include "os.h"
 #include "cx.h"
 #include <stdbool.h>
+#include <string.h>
 #include "ethUtils.h"
 
 bool rlpCanDecode(uint8_t *buffer, uint32_t bufferLength, bool *valid) {
@@ -123,7 +124,68 @@ void getEthAddressFromKey(cx_ecfp_public_key_t *publicKey, uint8_t *out,
     os_memmove(out, hashAddress + 12, 20);
 }
 
-#ifdef CHECKSUM_1
+#ifdef CHECKSUM_RSK	
+extern unsigned int global_v;
+
+static const uint8_t const HEXDIGITS[] = "0123456789abcdef";
+char convertDigit(uint8_t *address, uint8_t index, uint8_t *hash) {
+    unsigned char digit = address[index / 2];
+    if ((index % 2) == 0) {
+        digit = (digit >> 4) & 0x0f;
+    } else {
+        digit = digit & 0x0f;
+    }
+    if (digit < 10) {
+        return HEXDIGITS[digit];
+    } else {
+        int v = (hash[index/2]>>(4*(1-index%2))) & 0x0f;
+        if (v>=8)
+            return HEXDIGITS[digit] - ('a'-'A');
+        else return HEXDIGITS[digit];
+    }
+}
+
+void getEthAddressStringFromKey(cx_ecfp_public_key_t *publicKey, uint8_t *out,
+                                cx_sha3_t *sha3Context) {
+    uint8_t hashAddress[32];
+    cx_keccak_init(sha3Context, 256);
+    cx_hash((cx_hash_t *)sha3Context, CX_LAST, publicKey->W + 1, 64,
+            hashAddress);
+    getEthAddressStringFromBinary(hashAddress + 12, out, sha3Context);
+}
+
+
+
+void getEthAddressStringFromBinary(uint8_t *address, uint8_t *out,
+                                   cx_sha3_t *sha3Context) {
+    uint8_t hashChecksum[32];
+    uint8_t prefixAddress[32+16];
+    uint8_t hexaddress[50];
+    uint8_t i;
+    /* convert address to hex */
+    uint8_t *pin = address;
+    uint8_t *pout = hexaddress;
+    for (;pin<address+20;pout+=2,pin++) {
+	pout[0] = HEXDIGITS[(*pin>>4) & 0xf];
+	pout[1] = HEXDIGITS[(*pin)    & 0xf];
+	}
+    pout[0]=0;
+    int vII=0;// hack because ledger don't like short ints
+    os_memmove(&vII,&global_v,2);
+    /* calculate prefix */
+    if (global_v==0)
+    	 snprintf(prefixAddress,sizeof(prefixAddress),"%s",hexaddress);
+    else snprintf(prefixAddress,sizeof(prefixAddress),"%d0x%s",vII,hexaddress);
+    /* calculate hash */
+    cx_keccak_init(sha3Context, 256);
+    cx_hash((cx_hash_t *)sha3Context, CX_LAST, prefixAddress, strlen(prefixAddress), hashChecksum);
+    for (i = 0; i < 40; i++) {
+        out[i] = convertDigit(address, i, hashChecksum);
+    }
+    out[40] = '\0';
+}
+
+#elif defined(CHECKSUM_1)
 
 static const uint8_t const HEXDIGITS[] = "0123456789ABCDEF";
 

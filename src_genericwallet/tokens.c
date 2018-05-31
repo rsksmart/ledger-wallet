@@ -1419,4 +1419,8 @@ const tokenDefinition_t const TOKENS[NUM_TOKENS] = {
 
 const tokenDefinition_t const TOKENS[NUM_TOKENS] = {};
 
+#elif defined(CHAIN_TYPE_RSK)
+
+const tokenDefinition_t const TOKENS[NUM_TOKENS] = {};
+
 #endif
